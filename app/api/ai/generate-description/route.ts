@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
+  let productName = 'Product';
+  
   try {
-    const { productName, type } = await req.json()
+    const body = await req.json()
+    productName = body.productName || 'Product';
+    const type = body.type || 'item';
     
-    // Using FREE Hugging Face inference API (no API key needed for basic models)
+    // Using FREE Hugging Face inference API
     const response = await fetch(
       'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
       {
@@ -22,16 +26,14 @@ export async function POST(req: NextRequest) {
     let description = ''
     if (Array.isArray(data) && data[0]?.generated_text) {
       description = data[0].generated_text.split('?').pop()?.trim() || 
-                   `High-quality ${productName} for industrial use. Essential ${type} for manufacturing operations.`
+                   `High-quality ${productName} for industrial use.`
     } else {
-      // Fallback descriptions
-      description = `${productName} - Premium quality ${type} for industrial applications. Suitable for SME manufacturing and production workflows.`
+      description = `${productName} - Premium quality ${type} for industrial applications.`
     }
     
     return NextResponse.json({ description })
   } catch (error) {
     console.error('AI generation failed:', error)
-    // Fallback description
     return NextResponse.json({ 
       description: `Professional grade ${productName}. Ideal for manufacturing and industrial use.`
     })
