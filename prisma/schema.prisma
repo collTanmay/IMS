@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?  @db.Text
+  weight      Float
+  price       Float
+  quantity    Int      @default(0)
+  lastUpdated DateTime @updatedAt
+
+  isRawMaterial  Boolean @default(false)
+  isFinishedGood Boolean @default(false)
+
+  // Relations
+  billOfMaterials     BOMItem[] @relation("FinishedGood")
+  usedInManufacturing BOMItem[] @relation("RawMaterial")
+
+  salesOrderItems           SalesOrderItem[]
+  purchaseOrderItems        PurchaseOrderItem[]
+  manufacturingOutputs      ManufacturingBatch[]       @relation("OutputProduct")
+  manufacturingConsumptions ManufacturingConsumption[]
+  stockMovements            StockMovementLog[] // ✅ FIXED: Added reverse relation
+}
+
+model BOMItem {
+  id               String @id @default(cuid())
+  finishedGoodId   String
+  rawMaterialId    String
+  quantityRequired Float
+
+  finishedGood Product @relation("FinishedGood", fields: [finishedGoodId], references: [id], onDelete: Cascade)
+  rawMaterial  Product @relation("RawMaterial", fields: [rawMaterialId], references: [id], onDelete: Cascade)
+
+  @@unique([finishedGoodId, rawMaterialId])
+  @@index([finishedGoodId])
+  @@index([rawMaterialId])
+}
+
+model SalesOrder {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique @default(cuid())
+  status      OrderStatus @default(QUOTATION)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  items SalesOrderItem[]
+}
+
+model SalesOrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Float
+
+  order   SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product    @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  orderNumber String   @unique @default(cuid())
+  status      POStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Float
+
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model ManufacturingBatch {
+  id              String      @id @default(cuid())
+  batchNumber     String      @unique @default(cuid())
+  outputProductId String
+  outputQuantity  Int
+  status          BatchStatus @default(PLANNED)
+  createdAt       DateTime    @default(now())
+  completedAt     DateTime?
+
+  outputProduct Product                    @relation("OutputProduct", fields: [outputProductId], references: [id])
+  consumptions  ManufacturingConsumption[]
+
+  @@index([outputProductId])
+  @@index([status])
+}
+
+model ManufacturingConsumption {
+  id           String @id @default(cuid())
+  batchId      String
+  materialId   String
+  quantityUsed Float
+
+  batch    ManufacturingBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  material Product            @relation(fields: [materialId], references: [id])
+
+  @@index([batchId])
+  @@index([materialId])
+}
+
+model StockMovementLog {
+  id           String   @id @default(cuid())
+  productId    String
+  changeAmount Int
+  reason       String
+  referenceId  String?
+  timestamp    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade) // ✅ Added onDelete
+
+  @@index([productId])
+  @@index([timestamp])
+}
+
+enum OrderStatus {
+  QUOTATION
+  PACKING
+  DISPATCHED
+  COMPLETED
+  CANCELLED
+}
+
+enum POStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+enum BatchStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
