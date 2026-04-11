@@ -3,12 +3,14 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     // Get the purchase order with items
     const order = await prisma.purchaseOrder.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         items: {
           include: { product: true }
@@ -45,7 +47,7 @@ export async function POST(
     
     // Update order status to RECEIVED
     await prisma.purchaseOrder.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: 'RECEIVED',
         updatedAt: new Date()

@@ -4,11 +4,13 @@ import { prisma } from '@/lib/prisma'
 // GET single purchase order
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     const order = await prisma.purchaseOrder.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         items: {
           include: { product: true }
@@ -30,13 +32,14 @@ export async function GET(
 // PATCH update order status
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await req.json()
     
     const order = await prisma.purchaseOrder.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: body.status,
         updatedAt: new Date()
@@ -53,11 +56,13 @@ export async function PATCH(
 // DELETE purchase order
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     await prisma.purchaseOrder.delete({
-      where: { id: params.id }
+      where: { id }
     })
     
     return NextResponse.json({ success: true })
