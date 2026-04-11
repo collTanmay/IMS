@@ -1,15 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const runtime = 'nodejs';
+
+export async function GET(req: NextRequest) {
   try {
-    const orders = await prisma.purchaseOrder.findMany({
-      include: { items: true },
-      orderBy: { createdAt: 'desc' }
+    const { searchParams } = new URL(req.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const skip = (page - 1) * limit
+
+    const [orders, total] = await Promise.all([
+      prisma.purchaseOrder.findMany({
+        include: { items: { include: { product: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.purchaseOrder.count()
+    ])
+    
+    return NextResponse.json({
+      data: orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60'
+      }
     })
-    return NextResponse.json(orders)
   } catch (error) {
-    return NextResponse.json([], { status: 500 })
+    console.error('Error fetching purchase orders:', error)
+    return NextResponse.json({
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, pages: 0 }
+    }, { status: 200 })
   }
 }
 
@@ -34,7 +65,7 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
-    console.error(error)
+    console.error('Error creating purchase order:', error)
     return NextResponse.json({ error: 'Failed to create PO' }, { status: 500 })
   }
 }

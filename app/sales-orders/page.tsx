@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Search, ChevronRight, Package, Truck, CheckCircle, Clock } from 'lucide-react'
+import { Plus, Search, ChevronRight, Package, Truck, CheckCircle, Clock, ChevronDown } from 'lucide-react'
 
 export default function SalesOrdersListPage() {
   const [orders, setOrders] = useState([])
@@ -10,17 +10,51 @@ export default function SalesOrdersListPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
 
   useEffect(() => {
-    fetch('/api/sales-orders')
-      .then(res => res.json())
-      .then(data => {
-        setOrders(data)
-        if (data.length > 0) setSelectedOrder(data[0])
+    const fetchOrders = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/sales-orders?page=${page}&limit=20`)
+        const result = await res.json()
+        
+        if (page === 1) {
+          setOrders(result.data || result)
+          setSelectedOrder((result.data || result)[0] || null)
+        } else {
+          setOrders(prev => [...prev, ...(result.data || result)])
+        }
+        
+        if (result.pagination) {
+          setTotalPages(result.pagination.pages)
+          setHasMore(page < result.pagination.pages)
+        }
+      } catch (error) {
+        console.error('Error fetching sales orders:', error)
+        // Handle array response fallback
+        __fetchOrdersSync()
+      } finally {
         setLoading(false)
-      })
-      .catch(console.error)
-  }, [])
+      }
+    }
+
+    const __fetchOrdersSync = async () => {
+      try {
+        const res = await fetch('/api/sales-orders')
+        const data = await res.json()
+        const orderList = Array.isArray(data) ? data : data.data || []
+        setOrders(orderList)
+        if (orderList.length > 0) setSelectedOrder(orderList[0])
+      } catch (e) {
+        console.error('Fallback fetch failed:', e)
+      }
+    }
+
+    fetchOrders()
+  }, [page])
 
   const filteredOrders = orders.filter((o: any) => {
     const matchesSearch = o.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -38,8 +72,35 @@ export default function SalesOrdersListPage() {
     return styles[status] || styles.QUOTATION
   }
 
-  const formatINR = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)
+  const getNextStatus = (currentStatus: string) => {
+    const statusFlow = {
+      QUOTATION: 'PACKING',
+      PACKING: 'DISPATCHED',
+      DISPATCHED: 'COMPLETED',
+      COMPLETED: 'COMPLETED'
+    }
+    return statusFlow[currentStatus] || currentStatus
+  }
+
+  const moveToNextStage = async () => {
+    if (!selectedOrder) return
+    
+    const nextStatus = getNextStatus(selectedOrder.status)
+    try {
+      const res = await fetch(`/api/sales-orders/${selectedOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus })
+      })
+      
+      if (res.ok) {
+        setSelectedOrder({ ...selectedOrder, status: nextStatus })
+        setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: nextStatus } : o))
+      }
+    } catch (error) {
+      console.error('Failed to update order:', error)
+      alert('Failed to update order status')
+    }
   }
 
   return (
@@ -50,7 +111,7 @@ export default function SalesOrdersListPage() {
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold">Sales Orders</h2>
             <Link href="/sales-orders/new">
-              <button className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700">
+              <button className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors">
                 <Plus size={18} />
               </button>
             </Link>
@@ -62,7 +123,7 @@ export default function SalesOrdersListPage() {
             <input
               type="text"
               placeholder="Search orders..."
-              className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm"
+              className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -88,40 +149,52 @@ export default function SalesOrdersListPage() {
 
         {/* Scrollable List */}
         <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="p-4 text-center text-gray-500">Loading...</div>
+          {loading && page === 1 ? (
+            <div className="p-4 text-center text-gray-500">⏳ Loading...</div>
           ) : filteredOrders.length === 0 ? (
             <div className="p-4 text-center text-gray-500">No orders found</div>
           ) : (
-            filteredOrders.map((order: any) => {
-              const statusStyle = getStatusBadge(order.status)
-              const StatusIcon = statusStyle.icon
-              return (
-                <div
-                  key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className={`p-4 border-b cursor-pointer transition-colors ${
-                    selectedOrder?.id === order.id 
-                      ? 'bg-blue-50 border-l-4 border-l-blue-600' 
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-mono text-sm">{order.orderNumber}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${statusStyle.bg} ${statusStyle.text}`}>
-                      <StatusIcon size={12} />
-                      {statusStyle.label}
-                    </span>
+            <>
+              {filteredOrders.map((order: any) => {
+                const statusStyle = getStatusBadge(order.status)
+                const StatusIcon = statusStyle.icon
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => setSelectedOrder(order)}
+                    className={`p-4 border-b cursor-pointer transition-colors ${
+                      selectedOrder?.id === order.id 
+                        ? 'bg-blue-50 border-l-4 border-l-blue-600' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-mono text-sm font-semibold">{order.orderNumber}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${statusStyle.bg} ${statusStyle.text}`}>
+                        <StatusIcon size={12} />
+                        {statusStyle.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {order.items?.length || 0} items
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-600">
-                    {order.items?.length || 0} items
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              )
-            })
+                )
+              })}
+              {hasMore && (
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={loading}
+                  className="w-full p-3 text-center text-blue-600 hover:bg-blue-50 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <ChevronDown size={16} />
+                  {loading ? 'Loading...' : 'Load more'}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -139,10 +212,14 @@ export default function SalesOrdersListPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                  Move to Next Stage
+                <button 
+                  onClick={moveToNextStage}
+                  disabled={selectedOrder?.status === 'COMPLETED'}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  Move to {getNextStatus(selectedOrder?.status || 'QUOTATION')}
                 </button>
-                <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50">
+                <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                   Edit
                 </button>
               </div>

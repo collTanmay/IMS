@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Plus, Trash2, Search } from 'lucide-react'
+import { ArrowLeft, Save, Plus, Trash2, Search, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { FeasibilityChecker } from '@/components/FeasibilityChecker'
+import { useDebounce } from '@/lib/hooks'
 
 export default function NewSalesOrderPage() {
   const router = useRouter()
@@ -13,27 +14,59 @@ export default function NewSalesOrderPage() {
   const [items, setItems] = useState([{ productId: '', quantity: 1, unitPrice: 0 }])
   const [customerId, setCustomerId] = useState('')
   const [customerDetails, setCustomerDetails] = useState(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [customerError, setCustomerError] = useState('')
 
-  // Auto-fill customer (FR22)
+  // Fetch customer with debouncing
   const fetchCustomer = async (id: string) => {
-    if (id.length < 2) return
+    if (!id.trim()) {
+      setCustomerDetails(null)
+      setCustomerError('')
+      return
+    }
+
+    setSearchLoading(true)
+    setCustomerError('')
     try {
       const res = await fetch(`/api/customers/${id}`)
       if (res.ok) {
         const data = await res.json()
         setCustomerDetails(data)
+        setCustomerError('')
+      } else {
+        setCustomerDetails(null)
+        setCustomerError('Customer not found')
       }
     } catch (error) {
-      console.error('Customer not found')
+      console.error('Error fetching customer:', error)
+      setCustomerError('Failed to fetch customer')
+      setCustomerDetails(null)
+    } finally {
+      setSearchLoading(false)
     }
   }
 
+  // Debounced customer search
+  const debouncedFetchCustomer = useDebounce(fetchCustomer, 400)
+
   useEffect(() => {
-    fetch('/api/products/all')
+    fetch('/api/products/all?limit=100')
       .then(res => res.json())
-      .then(data => setProducts(data.filter((p: any) => p.isFinishedGood)))
+      .then(result => {
+        const productList = Array.isArray(result) ? result : result.data || result
+        setProducts(productList.filter((p: any) => p.isFinishedGood))
+      })
       .catch(console.error)
   }, [])
+
+  const handleCustomerSearch = () => {
+    debouncedFetchCustomer(customerId)
+  }
+
+  const handleCustomerInputChange = (value: string) => {
+    setCustomerId(value)
+    debouncedFetchCustomer(value)
+  }
 
   const addItem = () => {
     setItems([...items, { productId: '', quantity: 1, unitPrice: 0 }])
@@ -109,32 +142,44 @@ export default function NewSalesOrderPage() {
             <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Customer ID</label>
+                <label className="block text-sm font-medium mb-1">Customer ID / Code</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Enter customer ID"
-                    className="flex-1 border rounded-lg p-2"
+                    placeholder="Enter customer ID or code"
+                    className="flex-1 border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={customerId}
-                    onChange={(e) => {
-                      setCustomerId(e.target.value)
-                      fetchCustomer(e.target.value)
-                    }}
+                    onChange={(e) => handleCustomerInputChange(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCustomerSearch()}
                   />
-                  <button type="button" className="bg-gray-100 p-2 rounded-lg">
-                    <Search size={20} />
+                  <button 
+                    type="button" 
+                    onClick={handleCustomerSearch}
+                    disabled={!customerId.trim() || searchLoading}
+                    className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {searchLoading ? '⏳' : <Search size={20} />}
                   </button>
                 </div>
+                {customerError && (
+                  <div className="mt-2 flex items-center gap-2 text-red-600 text-sm">
+                    <AlertCircle size={16} />
+                    {customerError}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Customer Name</label>
                 <input
                   type="text"
-                  placeholder="Auto-filled from ID"
-                  className="w-full border rounded-lg p-2 bg-gray-50"
+                  placeholder={customerDetails ? '' : 'Search customer to auto-fill'}
+                  className="w-full border rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={customerDetails?.name || ''}
                   readOnly
                 />
+                {customerDetails && (
+                  <p className="text-xs text-green-600 mt-1">✓ Customer found</p>
+                )}
               </div>
             </div>
           </div>

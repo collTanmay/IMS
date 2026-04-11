@@ -12,9 +12,12 @@ export default function NewPurchaseOrderPage() {
   const [items, setItems] = useState([{ productId: '', quantity: 1, unitPrice: 0 }])
 
   useEffect(() => {
-    fetch('/api/products/all')
+    fetch('/api/products/all?limit=100')
       .then(res => res.json())
-      .then(data => setProducts(data.filter((p: any) => p.isRawMaterial)))
+      .then(result => {
+        const productList = Array.isArray(result) ? result : result.data || result
+        setProducts(productList.filter((p: any) => p.isRawMaterial))
+      })
       .catch(console.error)
   }, [])
 
