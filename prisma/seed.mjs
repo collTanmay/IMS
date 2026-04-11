@@ -1,4 +1,5 @@
-const { PrismaClient } = require('@prisma/client')
+import { PrismaClient } from '@prisma/client'
+
 const prisma = new PrismaClient()
 
 async function main() {
@@ -13,10 +14,47 @@ async function main() {
   await prisma.salesOrder.deleteMany({})
   await prisma.purchaseOrderItem.deleteMany({})
   await prisma.purchaseOrder.deleteMany({})
+  await prisma.customer.deleteMany({})
   await prisma.bOMItem.deleteMany({})
   await prisma.product.deleteMany({})
   
   console.log('✅ Cleared existing data')
+
+  // Create Sample Customers
+  const customer1 = await prisma.customer.create({
+    data: {
+      code: 'CUST-001',
+      name: 'Acme Corporation',
+      email: 'contact@acme.com',
+      phone: '+1-800-123-4567',
+      address: '123 Industrial Blvd, New York, NY 10001'
+    }
+  })
+  console.log(`👤 Created: ${customer1.name} (ID: ${customer1.id}, Code: ${customer1.code})`)
+
+  const customer2 = await prisma.customer.create({
+    data: {
+      code: 'CUST-002',
+      name: 'Global Industries Ltd',
+      email: 'sales@global.com',
+      phone: '+44-20-7946-0958',
+      address: '456 Trade Center, London, UK'
+    }
+  })
+  console.log(`👤 Created: ${customer2.name} (ID: ${customer2.id}, Code: ${customer2.code})`)
+
+  const customer3 = await prisma.customer.create({
+    data: {
+      code: 'CUST-003',
+      name: 'Premium Manufacturing Co',
+      email: 'orders@premium-mfg.com',
+      phone: '+91-22-1234-5678',
+      address: '789 Factory Lane, Mumbai, India'
+    }
+  })
+  console.log(`👤 Created: ${customer3.name} (ID: ${customer3.id}, Code: ${customer3.code})`)
+
+  console.log('✅ Created sample customers')
 
   // Create Raw Materials
   const aluminumSheet = await prisma.product.create({

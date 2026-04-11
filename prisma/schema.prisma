@@ -45,14 +45,35 @@ model BOMItem {
   @@index([rawMaterialId])
 }
 
+model Customer {
+  id          String   @id @default(cuid())
+  code        String   @unique @default(cuid())
+  name        String
+  email       String?  @unique
+  phone       String?
+  address     String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  salesOrders SalesOrder[]
+
+  @@index([code])
+  @@index([createdAt])
+}
+
 model SalesOrder {
   id          String      @id @default(cuid())
   orderNumber String      @unique @default(cuid())
+  customerId  String?
   status      OrderStatus @default(QUOTATION)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  items SalesOrderItem[]
+  customer Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    SalesOrderItem[]
+
+  @@index([customerId])
+  @@index([status])
 }
 
 model SalesOrderItem {
