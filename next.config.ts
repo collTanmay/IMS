@@ -1,9 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: 'C:\\Users\\Tanmay\\Desktop\\IMS',
-  },
+  reactStrictMode: true,
+  swcMinify: true,
 };
 
 export default nextConfig;
