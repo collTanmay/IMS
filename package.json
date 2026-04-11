@@ -12,7 +12,11 @@
   },
   "keywords": [],
   "author": "",
+<<<<<<< HEAD
 "license": "ISC",
+=======
+  "license": "ISC",
+>>>>>>> 41bee8a1e4e609761d3ed48d6ef1cbea8f914adc
   "type": "module",
   "prisma": {
     "seed": "node prisma/seed.mjs"
