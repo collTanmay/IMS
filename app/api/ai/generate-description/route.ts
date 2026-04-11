@@ -8,14 +8,13 @@ export async function POST(req: NextRequest) {
     productName = body.productName || 'Product';
     const type = body.type || 'item';
     
-    // Using FREE Hugging Face inference API
     const response = await fetch(
       'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          inputs: `Write a professional 2-sentence product description for a ${type} called "${productName}" for an inventory system. Be specific and business-like.`,
+          inputs: `Write a professional 2-sentence product description for a ${type} called "${productName}" for an inventory system.`,
           parameters: { max_new_tokens: 100, temperature: 0.7 }
         })
       }
