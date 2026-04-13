@@ -1,16 +1,14 @@
-## TODO: Fix Next.js Dev Server Errors
+## TODO: Fix TypeScript Build Errors
 
-### Plan Steps (Approved by user):
-1. [x] Update `next.config.mjs`: Add `turbo: false` to disable Turbopack, clean config.
-2. [x] Delete `next.config.ts` (duplicate/ conflicting).
-3. [x] Create `prisma.config.ts`: Migrate from deprecated `package.json#prisma`.
-4. [x] Edit `package.json`: Remove `prisma` key; updated dev script.
-5. [x] Clean cache and test: `rmdir /s /q .next & rmdir /s /q node_modules\\.cache && npx prisma generate && npm run dev`.
-6. [x] Verify server starts at http://localhost:3000 without errors (tested via `npm run dev`).
-7. [x] Update this TODO with progress.
+**Previous Task Complete:** Next.js dev server ✅ Committed (5a5778b).
 
-**Core fixes complete!** 🎉 Next.js dev server ready with webpack (Turbopack disabled to avoid root errors), duplicate config removed.\n\n**Note:** Prisma config migration to `prisma.config.ts` skipped (not supported in v6.19.3; deprecated warning non-blocking). Revert to `package.json#prisma`.\n\nRun `npm run dev` now – should work perfectly!\n\nFinal test: Clean + start.
-7. [ ] Update this TODO with progress.
+### New Task: Fix "Property 'price' does not exist on type 'never'" (npm run build)
 
-Current progress: Steps 1-4 complete. Proceed to cleanup and test.
+**Plan Steps (Approved):**
+1. [ ] Add types to `app/sales-orders/new/page.tsx`.
+2. [ ] Add types to `app/purchase-orders/new/page.tsx`.
+3. [ ] Test `npm run build`.
+4. [ ] Commit fixes.
+
+**Progress:** Steps 1-2 complete (typed `Product`, `OrderItem` interfaces, fixed `find()` typing).\n3. [ ] Test `npm run build`.\n4. [ ] Commit fixes.
 

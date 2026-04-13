@@ -6,14 +6,21 @@ import { ArrowLeft, Save, Plus, Trash2, Search, AlertCircle } from 'lucide-react
 import Link from 'next/link'
 import { FeasibilityChecker } from '@/components/FeasibilityChecker'
 import { useDebounce } from '@/lib/hooks'
+import { Product } from '@prisma/client'
+
+interface OrderItem {
+  productId: string
+  quantity: number
+  unitPrice: number
+}
 
 export default function NewSalesOrderPage() {
   const router = useRouter()
-  const [products, setProducts] = useState([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
-  const [items, setItems] = useState([{ productId: '', quantity: 1, unitPrice: 0 }])
+  const [items, setItems] = useState<OrderItem[]>([{ productId: '', quantity: 1, unitPrice: 0 }])
   const [customerId, setCustomerId] = useState('')
-  const [customerDetails, setCustomerDetails] = useState(null)
+  const [customerDetails, setCustomerDetails] = useState<{name: string} | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const [customerError, setCustomerError] = useState('')
 
@@ -54,7 +61,7 @@ export default function NewSalesOrderPage() {
       .then(res => res.json())
       .then(result => {
         const productList = Array.isArray(result) ? result : result.data || result
-        setProducts(productList.filter((p: any) => p.isFinishedGood))
+        setProducts(productList.filter((p: Product) => p.isFinishedGood))
       })
       .catch(console.error)
   }, [])
@@ -83,7 +90,7 @@ export default function NewSalesOrderPage() {
     newItems[index] = { ...newItems[index], [field]: value }
     
     if (field === 'productId') {
-      const product = products.find((p: any) => p.id === value)
+      const product = products.find((p) => p.id === value)
       if (product) {
         newItems[index].unitPrice = product.price
       }
@@ -184,7 +191,7 @@ export default function NewSalesOrderPage() {
             </div>
           </div>
 
-          {/* Products Section - Unlimited Rows (FR21) */}
+          {/* Products Section - Unlimited Rows */}
           <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Order Items</h2>
@@ -209,7 +216,7 @@ export default function NewSalesOrderPage() {
                       onChange={(e) => updateItem(index, 'productId', e.target.value)}
                     >
                       <option value="">Select product...</option>
-                      {products.map((p: any) => (
+                      {products.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name} ({p.code}) - ₹{p.price}
                         </option>
@@ -265,7 +272,7 @@ export default function NewSalesOrderPage() {
             </div>
           </div>
 
-          {/* Feasibility Check - Shows when products selected */}
+          {/* Feasibility Check */}
           {items.some(i => i.productId) && (
             <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
               <h2 className="text-lg font-semibold mb-4">Feasibility Check</h2>

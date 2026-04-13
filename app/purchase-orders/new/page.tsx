@@ -4,19 +4,26 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { Product } from '@prisma/client'
+
+interface OrderItem {
+  productId: string
+  quantity: number
+  unitPrice: number
+}
 
 export default function NewPurchaseOrderPage() {
   const router = useRouter()
-  const [products, setProducts] = useState([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
-  const [items, setItems] = useState([{ productId: '', quantity: 1, unitPrice: 0 }])
+  const [items, setItems] = useState<OrderItem[]>([{ productId: '', quantity: 1, unitPrice: 0 }])
 
   useEffect(() => {
     fetch('/api/products/all?limit=100')
       .then(res => res.json())
       .then(result => {
         const productList = Array.isArray(result) ? result : result.data || result
-        setProducts(productList.filter((p: any) => p.isRawMaterial))
+        setProducts(productList.filter((p: Product) => p.isRawMaterial))
       })
       .catch(console.error)
   }, [])
@@ -26,7 +33,9 @@ export default function NewPurchaseOrderPage() {
   }
 
   const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index))
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index))
+    }
   }
 
   const updateItem = (index: number, field: string, value: any) => {
@@ -34,7 +43,7 @@ export default function NewPurchaseOrderPage() {
     newItems[index] = { ...newItems[index], [field]: value }
     
     if (field === 'productId') {
-      const product = products.find((p: any) => p.id === value)
+      const product = products.find((p) => p.id === value)
       if (product) {
         newItems[index].unitPrice = product.price
       }
@@ -113,7 +122,7 @@ export default function NewPurchaseOrderPage() {
                   onChange={(e) => updateItem(index, 'productId', e.target.value)}
                 >
                   <option value="">Select raw material...</option>
-                  {products.map((p: any) => (
+                  {products.map((p) => (
                     <option key={p.id} value={p.id}>{p.name} (₹{p.price}/{p.weight}kg)</option>
                   ))}
                 </select>
