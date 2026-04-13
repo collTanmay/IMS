@@ -34,7 +34,7 @@ export default function InventoryPage() {
         if (page === 1) {
           setProducts(productList)
         } else {
-          setProducts(prev => [...prev, ...productList])
+          setProducts((prev: any[]) => [...prev, ...productList])
         }
         
         if (result.pagination) {
