@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       data: {
         orderNumber: `SO-${Date.now()}`,
         status: 'QUOTATION',
-        customers: body.customerId || '',
+        customerId: body.customerId || '',
         items: {
           create: body.items.map((item: any) => ({
             productId: item.productId,
