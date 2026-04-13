@@ -4,8 +4,16 @@ import { useState, useEffect } from 'react'
 import { Package, Plus, Truck, CheckCircle, Clock } from 'lucide-react'
 import Link from 'next/link'
 
+interface PurchaseOrder {
+  id: string
+  orderNumber: string
+  status: string
+  createdAt: string
+  items: any[]
+}
+
 export default function PurchaseOrdersPage() {
-  const [orders, setOrders] = useState([])
+  const [orders, setOrders] = useState<PurchaseOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -15,12 +23,12 @@ export default function PurchaseOrdersPage() {
       setLoading(true)
       try {
         const res = await fetch(`/api/purchase-orders?page=${page}&limit=20`)
-        const result = await res.json()
+        const result: { data: PurchaseOrder[], pagination?: { pages: number } } = await res.json()
         
         if (page === 1) {
-          setOrders(result.data || result)
+          setOrders(result.data || [])
         } else {
-          setOrders(prev => [...prev, ...(result.data || result)])
+          setOrders(prev => [...prev, ...result.data])
         }
         
         if (result.pagination) {
@@ -31,8 +39,8 @@ export default function PurchaseOrdersPage() {
         // Fallback
         try {
           const fallbackRes = await fetch('/api/purchase-orders')
-          const fallbackData = await fallbackRes.json()
-          const fallbackList = Array.isArray(fallbackData) ? fallbackData : fallbackData.data || fallbackData
+          const fallbackResult: { data: PurchaseOrder[] } = await fallbackRes.json()
+          const fallbackList = Array.isArray(fallbackResult) ? fallbackResult : fallbackResult.data || fallbackResult
           if (page === 1) setOrders(fallbackList)
         } catch (e) {
           console.error('Fallback failed:', e)
@@ -112,7 +120,7 @@ export default function PurchaseOrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order: any) => {
+                {orders.map((order) => {
                   const statusStyle = getStatusBadge(order.status)
                   return (
                     <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -143,8 +151,7 @@ export default function PurchaseOrdersPage() {
                             borderRadius: '6px',
                             cursor: 'pointer',
                             fontSize: '14px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s'
+                            fontWeight: '500'
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.background = '#0284c7'

@@ -2,14 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Search, ChevronRight, Package, Truck, CheckCircle, Clock, ChevronDown } from 'lucide-react'
+import { Plus, Search, Package, Truck, CheckCircle, Clock, ChevronDown } from 'lucide-react'
+
+interface SalesOrder {
+  id: string
+  orderNumber: string
+  status: string
+  createdAt: string
+  items: any[]
+}
 
 export default function SalesOrdersListPage() {
-  const [orders, setOrders] = useState([])
-  const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [orders, setOrders] = useState<SalesOrder[]>([])
+  const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'QUOTATION' | 'PACKING' | 'DISPATCHED'>('ALL')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -22,10 +30,10 @@ export default function SalesOrdersListPage() {
         const result = await res.json()
         
         if (page === 1) {
-          setOrders(result.data || result)
-          setSelectedOrder((result.data || result)[0] || null)
+          setOrders(result.data || [])
+          setSelectedOrder((result.data || [])[0] || null)
         } else {
-          setOrders(prev => [...prev, ...(result.data || result)])
+          setOrders(prev => [...prev, ...(result.data || [])])
         }
         
         if (result.pagination) {
@@ -34,7 +42,6 @@ export default function SalesOrdersListPage() {
         }
       } catch (error) {
         console.error('Error fetching sales orders:', error)
-        // Handle array response fallback
         __fetchOrdersSync()
       } finally {
         setLoading(false)
@@ -56,11 +63,13 @@ export default function SalesOrdersListPage() {
     fetchOrders()
   }, [page])
 
-  const filteredOrders = orders.filter((o: any) => {
+  const filteredOrders = orders.filter((o: SalesOrder) => {
     const matchesSearch = o.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = statusFilter === 'ALL' || o.status === statusFilter
     return matchesSearch && matchesFilter
   })
+
+  const formatINR = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -69,8 +78,10 @@ export default function SalesOrdersListPage() {
       DISPATCHED: { bg: 'bg-green-100', text: 'text-green-800', icon: Truck, label: 'Dispatched' },
       COMPLETED: { bg: 'bg-gray-100', text: 'text-gray-800', icon: CheckCircle, label: 'Completed' }
     }
-    return styles[status] || styles.QUOTATION
+    return styles[status as keyof typeof styles] || styles.QUOTATION!
   }
+
+  const StatusIcon = (statusStyle: any) => statusStyle.icon ? statusStyle.icon : null
 
   const getNextStatus = (currentStatus: string) => {
     const statusFlow = {
@@ -79,7 +90,7 @@ export default function SalesOrdersListPage() {
       DISPATCHED: 'COMPLETED',
       COMPLETED: 'COMPLETED'
     }
-    return statusFlow[currentStatus] || currentStatus
+    return statusFlow[currentStatus as keyof typeof statusFlow] || currentStatus
   }
 
   const moveToNextStage = async () => {
@@ -94,8 +105,9 @@ export default function SalesOrdersListPage() {
       })
       
       if (res.ok) {
-        setSelectedOrder({ ...selectedOrder, status: nextStatus })
-        setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: nextStatus } : o))
+        const updatedOrder = { ...selectedOrder, status: nextStatus }
+        setSelectedOrder(updatedOrder)
+        setOrders(orders.map(o => o.id === selectedOrder.id ? updatedOrder : o))
       }
     } catch (error) {
       console.error('Failed to update order:', error)
@@ -105,7 +117,6 @@ export default function SalesOrdersListPage() {
 
   return (
     <div className="h-screen flex bg-gray-50">
-      {/* LEFT PANEL - Master List (SRS 3.1) */}
       <div className="w-96 border-r bg-white flex flex-col">
         <div className="p-4 border-b">
           <div className="flex justify-between items-center mb-3">
@@ -117,7 +128,6 @@ export default function SalesOrdersListPage() {
             </Link>
           </div>
           
-          {/* Search Bar (SRS 3.1) */}
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
@@ -129,12 +139,11 @@ export default function SalesOrdersListPage() {
             />
           </div>
 
-          {/* Filter Buttons (SRS 3.1) */}
           <div className="flex gap-1">
             {['ALL', 'QUOTATION', 'PACKING', 'DISPATCHED'].map(status => (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
+                onClick={() => setStatusFilter(status as 'ALL' | 'QUOTATION' | 'PACKING' | 'DISPATCHED')}
                 className={`px-3 py-1 text-xs rounded-full transition-colors ${
                   statusFilter === status 
                     ? 'bg-blue-600 text-white' 
@@ -147,17 +156,15 @@ export default function SalesOrdersListPage() {
           </div>
         </div>
 
-        {/* Scrollable List */}
         <div className="flex-1 overflow-y-auto">
           {loading && page === 1 ? (
-            <div className="p-4 text-center text-gray-500">⏳ Loading...</div>
+            <div className="p-4 text-center text-gray-500">Loading...</div>
           ) : filteredOrders.length === 0 ? (
             <div className="p-4 text-center text-gray-500">No orders found</div>
           ) : (
             <>
-              {filteredOrders.map((order: any) => {
+              {filteredOrders.map((order) => {
                 const statusStyle = getStatusBadge(order.status)
-                const StatusIcon = statusStyle.icon
                 return (
                   <div
                     key={order.id}
@@ -171,7 +178,7 @@ export default function SalesOrdersListPage() {
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-mono text-sm font-semibold">{order.orderNumber}</span>
                       <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${statusStyle.bg} ${statusStyle.text}`}>
-                        <StatusIcon size={12} />
+                        <StatusIcon statusStyle={statusStyle} />
                         {statusStyle.label}
                       </span>
                     </div>
@@ -199,11 +206,9 @@ export default function SalesOrdersListPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Detail View (SRS 3.1) */}
       <div className="flex-1 overflow-y-auto p-6">
         {selectedOrder ? (
           <div className="max-w-3xl">
-            {/* Header with Actions */}
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{selectedOrder.orderNumber}</h1>
@@ -214,10 +219,10 @@ export default function SalesOrdersListPage() {
               <div className="flex gap-2">
                 <button 
                   onClick={moveToNextStage}
-                  disabled={selectedOrder?.status === 'COMPLETED'}
+                  disabled={selectedOrder.status === 'COMPLETED'}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  Move to {getNextStatus(selectedOrder?.status || 'QUOTATION')}
+                  Move to {getNextStatus(selectedOrder.status)}
                 </button>
                 <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                   Edit
@@ -225,22 +230,19 @@ export default function SalesOrdersListPage() {
               </div>
             </div>
 
-            {/* Status */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-500 mb-2">Current Status</p>
               {(() => {
                 const statusStyle = getStatusBadge(selectedOrder.status)
-                const StatusIcon = statusStyle.icon
                 return (
                   <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                    <StatusIcon size={16} />
+                    <StatusIcon statusStyle={statusStyle} />
                     {statusStyle.label}
                   </span>
                 )
               })()}
             </div>
 
-            {/* Order Items */}
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Order Items</h3>
               <table className="w-full">
