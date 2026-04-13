@@ -14,11 +14,11 @@ const getStockHealth = (quantity: number) => {
 }
 
 export default function InventoryPage() {
-  const [products, setProducts] = useState([])
+  const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [aiSearchEnabled, setAiSearchEnabled] = useState(false)
-  const [aiSearchResults, setAiSearchResults] = useState([])
+  const [aiSearchResults, setAiSearchResults] = useState<any[]>([])
   const [aiSearching, setAiSearching] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
