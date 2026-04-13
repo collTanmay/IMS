@@ -48,12 +48,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     
+    const { items } = body
+    
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: 'No items provided' }, { status: 400 })
+    }
+    
     const order = await prisma.purchaseOrder.create({
       data: {
         orderNumber: `PO-${Date.now()}`,
         status: 'DRAFT',
         items: {
-          create: body.items.map((item: any) => ({
+          create: items.map((item: any) => ({
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice
