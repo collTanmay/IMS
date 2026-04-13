@@ -39,7 +39,7 @@ export default function NewPurchaseOrderPage() {
   }
 
   const updateItem = (index: number, field: string, value: any) => {
-    const newItems = [...items]
+    const newItems: OrderItem[] = [...items]
     newItems[index] = { ...newItems[index], [field]: value }
     
     if (field === 'productId') {
